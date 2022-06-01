@@ -102,8 +102,10 @@ def main():
             toWrite.writerow(["Base nr","Average PHRED value"])
             for index, score in enumerate(average):
                 toWrite.writerow([index, score])
-
+    else:
+        print(average)
     print("Finished")
+    
 if __name__ == "__main__":
     start_time = time.time()
     main()
