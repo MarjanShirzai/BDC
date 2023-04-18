@@ -54,59 +54,62 @@ def phredScore(inputfile, output,  startSize, endSize ):
 
 def main():
     parser = argparse.ArgumentParser(description='Process FastQ file to produce average PHRED scores per base')
-    parser.add_argument("fastqFile", help= "The fastq file")
+    parser.add_argument("fastqFile", help= "The fastq file", nargs="*")
     parser.add_argument("-o", "--output",help="Directs the output to the given output name")
     parser.add_argument('-n',"--cores" ,help = "The number of cores you want to use", type=int, required=True)
 
     args = parser.parse_args()
 
-    processes = []
+    for count, files in enumerate(args.fastqFile):
 
-    # Creating chunks
-    fileInformation = os.stat(args.fastqFile)
-    chunks = round(fileInformation.st_size / args.cores)
 
-    startPosition = 0
-    endPosition = chunks
+        processes = []
 
-    # creating the processes
-    for processNumber in range(0, args.cores):
-        print("Process started")
-        processRange = mp.Process(target=phredScore, args=(args.fastqFile, output, startPosition, endPosition))
-        processes.append(processRange)
-        processRange.start()
-        startPosition += chunks
-        endPosition += chunks
+        # Creating chunks
+        fileInformation = os.stat(files)
+        chunks = round(fileInformation.st_size / args.cores)
 
-    numbers = []
-    counters = []
-    average = []
+        startPosition = 0
+        endPosition = chunks
 
-    #Closing processes and
-    for process in processes:
-        process.join()
-        scores, index = output.get()
-        numbers.append(scores)
-        counters.append(index)
+        # creating the processes
+        for processNumber in range(0, args.cores):
+            print("Process started")
+            processRange = mp.Process(target=phredScore, args=(files, output, startPosition, endPosition))
+            processes.append(processRange)
+            processRange.start()
+            startPosition += chunks
+            endPosition += chunks
 
-    results = [sum(x) for x in zip(*numbers)]
-    counts = [sum(x) for x in zip(*counters)]
+        numbers = []
+        counters = []
+        average = []
 
-    for av in range(0, len(results)):
-        num = results[av] / counts[av]
-        average.append(num)
+        #Closing processes and
+        for process in processes:
+            process.join()
+            scores, index = output.get()
+            numbers.append(scores)
+            counters.append(index)
 
-    # If the output file is given as argument than print the results to the output file
-    if args.output:
-        with open(args.output, "w") as myFile:
-            toWrite = csv.writer(myFile)
-            toWrite.writerow(["Base nr","Average PHRED value"])
-            for index, score in enumerate(average):
-                toWrite.writerow([index, score])
-    else:
-        print(average)
-    print("Finished")
-    
+        results = [sum(x) for x in zip(*numbers)]
+        counts = [sum(x) for x in zip(*counters)]
+
+        for av in range(0, len(results)):
+            num = results[av] / counts[av]
+            average.append(num)
+
+        # If the output file is given as argument than print the results to the output file
+        if args.output:
+            with open(args.output[file], "w") as myFile:
+                toWrite = csv.writer(myFile)
+                toWrite.writerow(["Base nr","Average PHRED value"])
+                for index, score in enumerate(average):
+                    toWrite.writerow([index, score])
+        else:
+            print(average)
+        print("Finished")
+
 if __name__ == "__main__":
     start_time = time.time()
     main()
