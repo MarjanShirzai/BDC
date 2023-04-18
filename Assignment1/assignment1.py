@@ -4,8 +4,9 @@
 This python script uses the SeqIO module to get the PHRED value from the given fastq file
  and calculates the average PHRED scores per base
 
-usage: 
-    python3 script.py -fastq {fastq file name} -n {process number} -o {optional csv output file}
+usage:
+    python3 assignment1.py -n <aantal_cpus> [OPTIONEEL: -o <output csv file>] fastabestand1.fastq [fastabestand2.fastq ... fastabestandN.fastq]
+
 """
 
 __author__ = "Marjan Shirzai"
@@ -53,7 +54,7 @@ def phredScore(inputfile, output,  startSize, endSize ):
 
 def main():
     parser = argparse.ArgumentParser(description='Process FastQ file to produce average PHRED scores per base')
-    parser.add_argument("-fastq", "--fastqFile", help= "The fastq file", required=True)
+    parser.add_argument("fastqFile", help= "The fastq file")
     parser.add_argument("-o", "--output",help="Directs the output to the given output name")
     parser.add_argument('-n',"--cores" ,help = "The number of cores you want to use", type=int, required=True)
 
