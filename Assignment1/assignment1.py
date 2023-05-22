@@ -55,14 +55,12 @@ def phredScore(inputfile, output,  startSize, endSize ):
 def main():
     parser = argparse.ArgumentParser(description='Process FastQ file to produce average PHRED scores per base')
     parser.add_argument("fastqFile", help= "The fastq file", nargs="*")
-    parser.add_argument("-o", "--output",help="Directs the output to the given output name")
+    parser.add_argument("-o", "--output",help="Directs the output to the given output name", nargs="*")
     parser.add_argument('-n',"--cores" ,help = "The number of cores you want to use", type=int, required=True)
 
     args = parser.parse_args()
 
     for count, files in enumerate(args.fastqFile):
-
-
         processes = []
 
         # Creating chunks
@@ -107,6 +105,7 @@ def main():
                 for index, score in enumerate(average):
                     toWrite.writerow([index, score])
         else:
+            print("{}".format(files))
             print(average)
         print("Finished")
 
