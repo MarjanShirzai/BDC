@@ -105,6 +105,8 @@ def main():
 
         # If the output file is given as argument than print the results to the output file
         if args.output:
+            error_str = "Number of output file is not equal to number of input file"
+            assert len(args.output) == len(args.fastqFile), error_str
             with open(args.output[count], "w") as my_file:
                 to_write = csv.writer(my_file)
                 to_write.writerow(["Base nr","Average PHRED value"])
