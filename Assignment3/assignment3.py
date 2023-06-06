@@ -5,7 +5,7 @@ This python script uses the SeqIO module to get the PHRED value from the given f
  and calculates the average PHRED scores per base
 
 usage:
-    python3 assignment1.py -n <aantal_cpus> [OPTIONEEL: -o <output csv file>] fastabestand1.fastq [fastabestand2.fastq ... fastabestandN.fastq]
+    python3 assignment3.py -n <aantal_cpus> [OPTIONEEL: -o <output csv file>] fastabestand1.fastq [fastabestand2.fastq ... fastabestandN.fastq]
 
 """
 
