@@ -9,5 +9,5 @@ source ~/../../commons/conda/conda_load.sh
 
 if [ -z "$*" ]; then echo "please provide one or more fastq file as argument";fi
 
-python3 assignment3.py -n 2 $1
+python3 assignment3.py -n 2 $@
 
