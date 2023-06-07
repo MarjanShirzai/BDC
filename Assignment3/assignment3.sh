@@ -7,5 +7,7 @@ source ~/../../commons/conda/conda_load.sh
 #SBATCH --nodes=1  
 #SBATCH --mem=4000  
 
-output=$(python3 assignment3.py -n 2 fastqfile.fastq)
-echo $output
+if [ -z "$*" ]; then echo "please provide one or more fastq file as argument";fi
+
+python3 assignment3.py -n 2 $1
+
