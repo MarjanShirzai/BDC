@@ -78,7 +78,6 @@ def main():
 
         # creating the processes
         for process_number in range(0, args.cores):
-            print("Process started")
             process_range = mp.Process(target=phred_score, args=(files, output, start_position, end_position))
             processes.append(process_range)
             process_range.start()
@@ -118,6 +117,4 @@ def main():
         print("Finished")
 
 if __name__ == "__main__":
-    start_time = time.time()
     main()
-    print("--- %s seconds ---" % (time.time() - start_time))

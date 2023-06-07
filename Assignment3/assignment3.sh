@@ -7,4 +7,5 @@ source ~/../../commons/conda/conda_load.sh
 #SBATCH --nodes=1  
 #SBATCH --mem=4000  
 
-python3 assignment3.py -n 2 fastqfile.fastq > testOutput.txt
+output=$(python3 assignment3.py -n 2 fastqfile.fastq)
+echo $output
