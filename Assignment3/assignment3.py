@@ -5,7 +5,7 @@ This python script uses the SeqIO module to get the PHRED value from the given f
  and calculates the average PHRED scores per base
 
 usage:
-    python3 assignment3.py -n <aantal_cpus> [OPTIONEEL: -o <output csv file>] fastabestand1.fastq [fastabestand2.fastq ... fastabestandN.fastq]
+    python3 assignment1.py -n <aantal_cpus> [OPTIONEEL: -o <output csv file>] fastabestand1.fastq [fastabestand2.fastq ... fastabestandN.fastq]
 
 """
 
@@ -78,6 +78,7 @@ def main():
 
         # creating the processes
         for process_number in range(0, args.cores):
+            #print("Process started")
             process_range = mp.Process(target=phred_score, args=(files, output, start_position, end_position))
             processes.append(process_range)
             process_range.start()
@@ -114,7 +115,9 @@ def main():
         else:
             print("{}".format(files))
             print(average)
-        print("Finished")
+        #print("Finished")
 
 if __name__ == "__main__":
+    #start_time = time.time()
     main()
+    #print("--- %s seconds ---" % (time.time() - start_time))
