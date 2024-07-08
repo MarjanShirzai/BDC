@@ -8,5 +8,5 @@ source ~/../../commons/conda/conda_load.sh
 #SBATCH --mem=4000  
 #SBATCH --output=assignment3.csv
 
-output= "assignment3.csv"
-python3 assignment3.py -n 2 fastqfile.fastq > output
+
+python3 assignment3.py -n 2 fastqfile.fastq > assignment3.csv
