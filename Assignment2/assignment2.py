@@ -14,9 +14,11 @@ __author__ = "Marjan Shirzai"
 __status__ = "In progress"
 __version__ = "0.1"
 
-import argparse
+import argparse as ap
 import time
-import multiprocessing as mp
+#import multiprocessing as mp
+from multiprocessing.managers import BaseManager, SyncManager
+import os, sys, time, queue
 import csv
 import os
 
@@ -48,24 +50,9 @@ def make_server_manager(port, authkey):
     print('Server started at port %s' % port)
     return manager
 
-def runserver(fn, data):
-    print("In def server")
-    # Start a shared manager server and access its queues
-    manager = make_server_manager(PORTNUM, b'whathasitgotinitspocketsesss?')
-    shared_job_q = manager.get_job_q()
-    shared_result_q = manager.get_result_q()
-
-    if not data:
-        print("Gimme something to do here!")
-        return
-    print("Sending data!")
-    for d in data:
-        shared_job_q.put({'fn': fn, 'arg': d})
-    time.sleep(2)
-
-
 
 def phred_score(inputfile, output, start_size, end_size):
+    print("In the phred!")
     """
     Calculating phred score
     """
@@ -98,6 +85,59 @@ def phred_score(inputfile, output, start_size, end_size):
                     counters[phred] += 1
         output.put([phred_score, counters])
 
+def runserver(fn, data, given_chunks):
+    print("In def server")
+    # Start a shared manager server and access its queues
+    manager = make_server_manager(PORTNUM, b'whathasitgotinitspocketsesss?')
+    shared_job_q = manager.get_job_q()
+    shared_result_q = manager.get_result_q()
+    
+
+    if not data:
+        print("Gimme something to do here!")
+        return
+    print("Sending data!")
+    processes = []
+    
+
+    for count, files in enumerate(data):
+        file_information = os.stat(files.name)
+        chunks = round(file_information.st_size / given_chunks)
+        print("MAKING chunckssssssssss")
+        start_position = 0
+        end_position = chunks
+
+# Creating the processes
+    for process_number in range(given_chunks):
+        print("Process started")
+        job_data = {'fn': fn, 'files': files.name, 'start_position': start_position, 'end_position': end_position}
+        shared_job_q.put(job_data)
+        start_position += chunks
+        end_position += chunks
+        time.sleep(2)
+    
+    results = []
+    while True:
+        try:
+            result = shared_result_q.get_nowait()
+            results.append(result)
+            print("Got result!", result)
+            if len(results) == len(data):
+                print("Got all results!")
+                break
+        except queue.Empty:
+            time.sleep(1)
+            continue
+    # Tell the client process no more data will be forthcoming
+    print("Time to kill some peons!")
+    shared_job_q.put(POISONPILL)
+    # Sleep a bit before shutting down the server - to give clients time to
+    # realize the job queue is empty and exit in an orderly way.
+    time.sleep(5)
+    print("Aaaaaand we're done for the server!")
+    manager.shutdown()
+    print(results)
+
 
 
 def main():
@@ -129,7 +169,7 @@ def main():
     args = argparser.parse_args()
 
     if args.server:
-        runserver(phred_score, args.fastq_files)
+        runserver(phred_score, args.fastq_files, args.chunks)
     elif args.client:
         print("In the client")
 
