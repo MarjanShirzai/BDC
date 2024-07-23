@@ -6,7 +6,6 @@
 #SBATCH --nodes=2  
 #SBATCH --mem=4000  
 #SBATCH --output=output.csv
-#SBATCH --partition=short
 
 #module load python/3.9-2022.05 # load python
 output="output.csv"
