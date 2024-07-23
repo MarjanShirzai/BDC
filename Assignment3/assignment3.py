@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 """
-This python script uses the SeqIO module to get the PHRED value from the given fastq file
+This python script calculates PHRED value from the given fastq file
  and calculates the average PHRED scores per base
 
 usage:
-    python3 assignment1.py -n <aantal_cpus> [OPTIONEEL: -o <output csv file>] fastabestand1.fastq [fastabestand2.fastq ... fastabestandN.fastq]
+    python3 assignment1.py -n <aantal chuncks> fastabestand1.fastq [fastabestand2.fastq ... fastabestandN.fastq]
 
 """
 
@@ -19,10 +19,7 @@ import multiprocessing as mp
 import csv
 import os
 
-# Defining an output queue
-output = mp.Queue()
-
-def phred_score(inputfile, output, start_size, end_size):
+def phred_score(inputfile, start_size, end_size):
     """
     Calculating phred score
     """
@@ -53,7 +50,7 @@ def phred_score(inputfile, output, start_size, end_size):
                         counters.append(0)
                     phred_score[phred] += quality_string[phred]
                     counters[phred] += 1
-        output.put([phred_score, counters])
+        return phred_score, counters
 
 def main():
     """
@@ -61,8 +58,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description='Process FastQ file to produce average PHRED scores per base')
     parser.add_argument("fastqFile", help= "The fastq file", nargs="*")
-    parser.add_argument("-o", "--output",help="Directs the output to the given output name", nargs="*")
-    parser.add_argument('-n',"--cores" ,help = "The number of cores you want to use", type=int, required=True)
+    parser.add_argument('-j',"--cores" ,help = "The number of cores you want to use", type=int, required=True)
 
     args = parser.parse_args()
 
@@ -75,19 +71,26 @@ def main():
 
         start_position = 0
         end_position = chunks
-
+        
+        numbers = []
+        counters = []
+        
         # creating the processes
         for process_number in range(0, args.cores):
-            #print("Process started")
-            process_range = mp.Process(target=phred_score, args=(files, output, start_position, end_position))
-            processes.append(process_range)
-            process_range.start()
+            scores, counts = phred_score(files, start_position,end_position )
+            numbers.append(scores)
+            counters.append(counts)
             start_position += chunks
             end_position += chunks
 
-        numbers = []
-        counters = []
+        results = [sum(x) for x in zip(*numbers)]
+        counts = [sum(x) for x in zip(*counters)]
+        
         average = []
+        
+        for average_num in range(0, len(results)):
+            num = results[average_num] / counts[average_num]
+            average.append(num)
 
         #Closing processes and
         for process in processes:
@@ -102,20 +105,10 @@ def main():
         for average_num in range(0, len(results)):
             num = results[average_num] / counts[average_num]
             average.append(num)
+        
+        print("{}".format(files))
+        print(average)
 
-        # If the output file is given as argument than print the results to the output file
-        if args.output:
-            error_str = "Number of output file is not equal to number of input file"
-            assert len(args.output) == len(args.fastqFile), error_str
-            with open(args.output[count], "w") as my_file:
-                to_write = csv.writer(my_file)
-                to_write.writerow(["Base nr","Average PHRED value"])
-                for index, score in enumerate(average):
-                    to_write.writerow([index, score])
-        else:
-            print("{}".format(files))
-            print(average)
-        #print("Finished")
 
 if __name__ == "__main__":
     #start_time = time.time()
