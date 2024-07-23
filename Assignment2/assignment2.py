@@ -16,7 +16,7 @@ __version__ = "0.1"
 
 import argparse as ap
 import time
-#import multiprocessing as mp
+import multiprocessing as mp
 from multiprocessing.managers import BaseManager, SyncManager
 import os, sys, time, queue
 import csv
@@ -28,6 +28,65 @@ IP = ''
 PORTNUM = 5381
 AUTHKEY = b'whathasitgotinitspocketsesss?'
 data = ["Always", "look", "on", "the", "bright", "side", "of", "life!"]
+
+
+
+def peon(job_q, result_q):
+    my_name = mp.current_process().name
+    while True:
+        try:
+            job = job_q.get_nowait()
+            if job == POISONPILL:
+                job_q.put(POISONPILL)
+                print("Aaaaaaargh", my_name)
+                return
+            else:
+                try:
+                    result = job['fn'](job['arg'])
+                    print("Peon %s Workwork on %s!" % (my_name, job['arg']))
+                    result_q.put({'job': job, 'result': result})
+                except NameError:
+                    print("Can't find yer fun Bob!")
+                    result_q.put({'job': job, 'result': ERROR})
+
+        except queue.Empty:
+            print("sleepytime for", my_name)
+            time.sleep(1)
+
+def run_workers(job_q, result_q, num_processes):
+    processes = []
+    for p in range(num_processes):
+        temP = mp.Process(target=peon, args=(job_q, result_q))
+        processes.append(temP)
+        temP.start()
+    print("Started %s workers!" % len(processes))
+    for temP in processes:
+        temP.join()
+
+
+def make_client_manager(ip, port, authkey):
+    """ Create a manager for a client. This manager connects to a server on the
+        given address and exposes the get_job_q and get_result_q methods for
+        accessing the shared queues from the server.
+        Return a manager object.
+    """
+    class ServerQueueManager(BaseManager):
+        pass
+
+    ServerQueueManager.register('get_job_q')
+    ServerQueueManager.register('get_result_q')
+
+    manager = ServerQueueManager(address=(ip, port), authkey=authkey)
+    manager.connect()
+
+    print('Client connected to %s:%s' % (ip, port))
+    return manager
+
+def runclient(num_processes):
+    manager = make_client_manager(IP, PORTNUM, AUTHKEY)
+    job_q = manager.get_job_q()
+    result_q = manager.get_result_q()
+    run_workers(job_q, result_q, num_processes)
 
 def make_server_manager(port, authkey):
     """ Create a manager for the server, listening on the given port.
@@ -51,8 +110,9 @@ def make_server_manager(port, authkey):
     return manager
 
 
-def phred_score(inputfile, output, start_size, end_size):
+def phred_score(inputfile, start_size, end_size):
     print("In the phred!")
+
     """
     Calculating phred score
     """
@@ -83,7 +143,8 @@ def phred_score(inputfile, output, start_size, end_size):
                         counters.append(0)
                     phred_score[phred] += quality_string[phred]
                     counters[phred] += 1
-        output.put([phred_score, counters])
+        return [phred_score,counters]
+
 
 def runserver(fn, data, given_chunks):
     print("In def server")
@@ -111,6 +172,7 @@ def runserver(fn, data, given_chunks):
     for process_number in range(given_chunks):
         print("Process started")
         job_data = {'fn': fn, 'files': files.name, 'start_position': start_position, 'end_position': end_position}
+        #job_data = {'fn': fn, 'arg': [files.name, start_position, end_position]}
         shared_job_q.put(job_data)
         start_position += chunks
         end_position += chunks
@@ -170,8 +232,17 @@ def main():
 
     if args.server:
         runserver(phred_score, args.fastq_files, args.chunks)
+        
+        #server = mp.Process(target=runserver, args=(phred_score, args.fastq_files, args.chunks ))
+        #server.start()
+        #time.sleep(1)
+        #server.join()
     elif args.client:
-        print("In the client")
+        #client = mp.Process(target=runclient, args=(4,))
+        #client.start()
+        runclient(args.n)
+        #client.join()
+        
 
 
 
