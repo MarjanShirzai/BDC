@@ -5,7 +5,7 @@ This python script calculates PHRED value from the given fastq file
  and calculates the average PHRED scores per base
 
 usage:
-    python3 assignment1.py -n <aantal chuncks> fastabestand1.fastq [fastabestand2.fastq ... fastabestandN.fastq]
+python3 assignment1.py -n <aantal chuncks> fastabestand1.fastq [fastabestand2.fastq ... fastabestandN.fastq]
 
 """
 
@@ -14,9 +14,6 @@ __status__ = "Finished"
 __version__ = "0.1"
 
 import argparse
-import time
-import multiprocessing as mp
-import csv
 import os
 
 def phred_score(inputfile, start_size, end_size):
@@ -56,14 +53,15 @@ def main():
     """
     Arguments are passed and results are processed in the main.
     """
-    parser = argparse.ArgumentParser(description='Process FastQ file to produce average PHRED scores per base')
+    parser = argparse.ArgumentParser(description=
+    'Process FastQ file to produce average PHRED scores per base')
     parser.add_argument("fastqFile", help= "The fastq file", nargs="*")
-    parser.add_argument('-j',"--cores" ,help = "The number of cores you want to use", type=int, required=True)
+    parser.add_argument('-n',"--cores" ,
+    help = "The number of cores you want to use", type=int, required=True)
 
     args = parser.parse_args()
 
     for count, files in enumerate(args.fastqFile):
-        processes = []
 
         # Creating chunks
         file_information = os.stat(files)
@@ -71,10 +69,8 @@ def main():
 
         start_position = 0
         end_position = chunks
-        
         numbers = []
         counters = []
-        
         # creating the processes
         for process_number in range(0, args.cores):
             scores, counts = phred_score(files, start_position,end_position )
@@ -85,27 +81,10 @@ def main():
 
         results = [sum(x) for x in zip(*numbers)]
         counts = [sum(x) for x in zip(*counters)]
-        
         average = []
-        
         for average_num in range(0, len(results)):
             num = results[average_num] / counts[average_num]
             average.append(num)
-
-        #Closing processes and
-        for process in processes:
-            process.join()
-            scores, index = output.get()
-            numbers.append(scores)
-            counters.append(index)
-
-        results = [sum(x) for x in zip(*numbers)]
-        counts = [sum(x) for x in zip(*counters)]
-
-        for average_num in range(0, len(results)):
-            num = results[average_num] / counts[average_num]
-            average.append(num)
-        
         print("{}".format(files))
         print(average)
 
