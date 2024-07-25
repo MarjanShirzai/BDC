@@ -5,8 +5,10 @@ This python script calculates the average PHRED scores per base from the given f
 The file will be spread over networks to speed up the calculation. 
 
 usage:
-      python3 assignment2.py -s rnaseqfile.fastq --host <een workstation> --port <een poort> --chunks <een getal>
-      python3 assignment2.py -c --host <diezelfde host als voor server> --port <diezelfde poort als voor server> -n <aantal cpus in client computer>
+      python3 assignment2.py -s rnaseqfile.fastq --host <een workstation>
+      --port <een poort> --chunks <een getal>
+      python3 assignment2.py -c --host <diezelfde host als voor server>
+      --port <diezelfde poort als voor server> -n <aantal cpus in client computer>
 
 """
 
@@ -15,23 +17,22 @@ __status__ = "In progress"
 __version__ = "0.1"
 
 import argparse as ap
-import time
 import multiprocessing as mp
-from multiprocessing.managers import BaseManager, SyncManager
-import os, sys, time, queue
-import csv
+from multiprocessing.managers import BaseManager
 import os
+import time
+import queue
+import csv
 
 POISONPILL = "MEMENTOMORI"
 ERROR = "DOH"
 IP = ''
-portum = 5381
 AUTHKEY = b'whathasitgotinitspocketsesss?'
-data = ["Always", "look", "on", "the", "bright", "side", "of", "life!"]
-
-
 
 def peon(job_q, result_q):
+    """
+    Defining the workers function
+    """
     my_name = mp.current_process().name
     while True:
         try:
@@ -56,12 +57,17 @@ def peon(job_q, result_q):
             time.sleep(1)
 
 def run_workers(job_q, result_q, num_processes):
+    """
+    Workers are here started
+    """
     processes = []
-    for p in range(num_processes):
+    #For pylint score changed to _
+    for _ in range(num_processes):
         temP = mp.Process(target=peon, args=(job_q, result_q))
         processes.append(temP)
         temP.start()
-    print("Started %s workers!" % len(processes))
+    #print("Started %s workers!" % len(processes))
+    print(f"Started {len(processes)} workers!")
     for temP in processes:
         temP.join()
 
@@ -73,6 +79,7 @@ def make_client_manager(ip, port, authkey):
         Return a manager object.
     """
     class ServerQueueManager(BaseManager):
+        """Basemanager for connecting to the server queues"""
         pass
 
     ServerQueueManager.register('get_job_q')
@@ -81,10 +88,16 @@ def make_client_manager(ip, port, authkey):
     manager = ServerQueueManager(address=(ip, port), authkey=authkey)
     manager.connect()
 
-    print('Client connected to %s:%s' % (ip, port))
+    #changed for pylint
+    print(f'Client connected to {ip}:{port}')
+    #print('Client connected to %s:%s' % (ip, port))
     return manager
 
+
 def runclient(num_processes, portum):
+    """
+    Information to the client manager is created to connect to server
+    """
     manager = make_client_manager(IP, portum, AUTHKEY)
     job_q = manager.get_job_q()
     result_q = manager.get_result_q()
@@ -97,10 +110,11 @@ def make_server_manager(port, authkey):
     job_q = queue.Queue()
     result_q = queue.Queue()
 
-    # This is based on the examples in the official docs of multiprocessing.
-    # get_{job|result}_q return synchronized proxies for the actual Queue
-    # objects.
+    #This is based on the examples in the official docs of multiprocessing.
+    #get_{job|result}_q return synchronized proxies for the actual Queue
+    #objects.
     class QueueManager(BaseManager):
+        """Basemanager for connecting to the server queues"""
         pass
 
     QueueManager.register('get_job_q', callable=lambda: job_q)
@@ -108,18 +122,18 @@ def make_server_manager(port, authkey):
 
     manager = QueueManager(address=('', port), authkey=authkey)
     manager.start()
-    print('Server started at port %s' % port)
+    #for pylint
+    print(f'Server started at port {port}')
+    #print('Server started at port %s' % port)
     return manager
 
 
 def phred_score(inputfile, start_size, end_size):
-    print("In the phred!")
-
     """
     Calculating phred score
     """
     # Open the given input file
-    with open(inputfile, "r") as fastq:
+    with open(inputfile, "r", encoding="utf-8") as fastq:
         fastq.seek(start_size)
         phred_score = []
         counters = []
@@ -148,20 +162,20 @@ def phred_score(inputfile, start_size, end_size):
         return [phred_score,counters]
 
 
-def runserver(fn, data, given_chunks, portum):
-    print("In def server")
-    # Start a shared manager server and access its queues
+def runserver(function, data, given_chunks, portum, csvfile):
+    """
+    Start a shared manager server and access its queues
+    """
     manager = make_server_manager(portum, b'whathasitgotinitspocketsesss?')
     shared_job_q = manager.get_job_q()
     shared_result_q = manager.get_result_q()
-    
-
     if not data:
         print("Gimme something to do here!")
         return
     print("Sending data!")
 
     for count, files in enumerate(data):
+        count = 0
         file_information = os.stat(files.name)
         chunks = round(file_information.st_size / given_chunks)
         print("MAKING chunckssssssssss")
@@ -169,13 +183,14 @@ def runserver(fn, data, given_chunks, portum):
         end_position = chunks
 
 # Creating the processes
-    for process_number in range(given_chunks):
-        job_data = {'fn': fn, 'files': files.name, 'start_position': start_position, 'end_position': end_position}
+    #For pylint scoe renames _
+    for _ in range(given_chunks):
+        job_data = {'fn': function, 'files': files.name,
+                    'start_position': start_position, 'end_position': end_position}
         shared_job_q.put(job_data)
         start_position += chunks
         end_position += chunks
         time.sleep(2)
-    
     results = []
     while True:
         try:
@@ -202,21 +217,6 @@ def runserver(fn, data, given_chunks, portum):
     counters = []
     average = []
 
-    # Closing processes and
-    # for process in processes:
-    #     process.join()
-    #     scores, index = output.get()
-    #     numbers.append(scores)
-    #     counters.append(index)
-    #
-    # results = [sum(x) for x in zip(*numbers)]
-    # counts = [sum(x) for x in zip(*counters)]
-    #
-    # for average_num in range(0, len(results)):
-    #     num = results[average_num] / counts[average_num]
-    #     average.append(num)
-
-
     for item in results:
         job = item['job']
         file_name = job['files']
@@ -227,14 +227,24 @@ def runserver(fn, data, given_chunks, portum):
         numbers.append(scores)
         counters.append(index)
 
-    print(file_name)
     results_sum = [sum(x) for x in zip(*numbers)]
     counts_sum = [sum(x) for x in zip(*counters)]
-    for average_num in range(0, len(results_sum)):
-        num = results_sum[average_num] / counts_sum[average_num]
+    #changed to enumerate for pylint
+    for average_num, result in enumerate(results_sum):
+        num = result / counts_sum[average_num]
         average.append(num)
 
-    print(average)
+    # If the output file is given as argument than print the results to the output file
+    if csvfile:
+        with open(csvfile.name, "w", encoding="utf-8") as my_file:
+            to_write = csv.writer(my_file)
+            to_write.writerow(["Base nr", "Average PHRED value"])
+            for index, score in enumerate(average):
+                to_write.writerow([index, score])
+    else:
+        print(file_name)
+        print(average)
+    print("Finished")
 
 
 def main():
@@ -242,19 +252,21 @@ def main():
     Arguments are passed and results are processed in the main.
     """
     #Make the portum global so it can be changed by the input.
-    global portum
 
     argparser = ap.ArgumentParser(
-        description="Script voor Opdracht 2 van Big Data Computing;  Calculate PHRED scores over the network.")
+        description="Script voor Opdracht 2 van Big Data Computing;  "
+                    "Calculate PHRED scores over the network.")
     mode = argparser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("-s", action="store_true", dest="server",help="Run the program in Server mode; see extra options needed below")
-    mode.add_argument("-c", action="store_true", dest="client",help="Run the program in Client mode; see extra options needed below")
+    mode.add_argument("-s", action="store_true", dest="server",
+                      help="Run the program in Server mode; see extra options needed below")
+    mode.add_argument("-c", action="store_true", dest="client",
+                      help="Run the program in Client mode; see extra options needed below")
 
 
     server_args = argparser.add_argument_group(title="Arguments when run in server mode")
-    server_args.add_argument("-o", action="store", dest="csvfile", type=ap.FileType('w', encoding='UTF-8'),
-                             required=False,
-                             help="CSV file om de output in op te slaan. Default is output naar terminal STDOUT")
+    server_args.add_argument("-o", action="store", dest="csvfile",
+                             type=ap.FileType('w', encoding='UTF-8'), required=False,
+                             help="CSV file voor output, default is terminal")
     server_args.add_argument("fastq_files", action="store", type=ap.FileType('r'), nargs='*',
                              help="Minstens 1 Illumina Fastq Format file om te verwerken")
     server_args.add_argument("--chunks", action="store", type=int, required=False)
@@ -263,15 +275,18 @@ def main():
     client_args.add_argument("-n", action="store",
                              dest="n", required=False, type=int,
                              help="Aantal cores om te gebruiken per host.")
-    argparser.add_argument("--host", action="store", type=str, help="The hostname where the Server is listening")
-    argparser.add_argument("--port", action="store", type=int, help="The port on which the Server is listening")
+    argparser.add_argument("--host", action="store",
+                           type=str, help="The hostname where the Server is listening")
+    argparser.add_argument("--port", action="store",
+                           type=int, help="The port on which the Server is listening")
     args = argparser.parse_args()
 
+    portum = 5381
     if args.port:
         portum = args.port
 
     if args.server:
-        runserver(phred_score, args.fastq_files, args.chunks, portum)
+        runserver(phred_score, args.fastq_files, args.chunks, portum, args.csvfile)
         #server = mp.Process(target=runserver, args=(phred_score, args.fastq_files, args.chunks ))
         #server.start()
         #time.sleep(1)
@@ -282,12 +297,8 @@ def main():
             argparser.error("Please give the core -n<number>")
         else:
             runclient(args.n, portum)
-        # client = mp.Process(target=runclient, args=(4,))
-        # client.start()
-        #runclient(args.n, portum)
-
 
 if __name__ == "__main__":
     start_time = time.time()
     main()
-    print("--- %s seconds ---" % (time.time() - start_time))
+    print(f"--- {time.time() - start_time} seconds ---")
